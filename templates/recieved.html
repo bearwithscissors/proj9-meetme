@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html lang="en"> <head>
+<title>Appointments</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" type="text/css"
+     href="//cdn.jsdelivr.net/bootstrap/latest/css/bootstrap.css"
+/>
+
+
+<link rel="stylesheet" type="text/css"
+    href="/static/css/busy.css"
+/>
+
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.css">
+
+<!-- jquery from a content distribution network; probably cached -->
+<script type="text/javascript"
+     src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+</script>
+
+
+<!-- Ideally the rest of our javascript dependencies would be
+     bundled and minified with 'browserify', but I've found that
+     it difficult to handle browserify dependencies for class
+     projects.  So, we'll pick up moment and Fa date range picker
+     from CDNs instead.
+-->
+
+<script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+
+<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css" />
+
+
+</head>
+
+<body>
+<script src="//cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.js"></script>
+<div class="container">
+
+{% if g.calendars is not defined  %}
+{% if g.cal_list is not defined  %}
+<h1>{%if session.sender is defined %}{{session.sender}}{% endif %} wants to set a meeting with you!</h1>
+
+<p>Let's find a time between {%if session.begin_date is defined %}{{session.begin_date | fmtdate}}{% endif %} and {%if session.end_date is defined %}{{session.end_date | fmtdate}}{% endif %}</p>
+<p>Choose a timeframe below!<p>
+<!--
+  -- If there are any warnings or other messages from a prior action,
+  -- they appear above the rest of the content, just until the next
+  -- action.
+  -->
+
+
+  <form action="/set_recieved_range" method="post">
+
+  Start Time:<br>
+  <input type=time name="begin_time" id="begin_time"
+
+  {% if session.begin_time is defined %}
+       value="{{session.begin_time | fmttime}}"
+  {% endif %}
+
+   style="background: #fff; cursor: pointer; padding: 5px 10px;
+  border: 1px solid #ccc; width: 12em"  /><br>
+
+
+  End Time<br>
+  <input type=time name="end_time" id="end_time"
+
+  {% if session.end_time is defined %}
+       value="{{session.end_time | fmttime}}"
+  {% endif %}
+
+  style="background: #fff; cursor: pointer; padding: 5px 10px;
+  border: 1px solid #ccc; width: 12em"  /><br>
+
+
+  <script type="text/javascript">
+  $('input[name="begin_time"]').timepicker({
+    timeFormat: 'hh:mm:ss',
+    interval: 60,
+    minTime: '00:01:00',
+    maxTime: '23:59:00',
+    //defaultTime: '11',
+    startTime: '1',
+    dynamic: false,
+    dropdown: true,
+    scrollbar: true
+  });
+
+  $('input[name="end_time"]').timepicker({
+    timeFormat: 'hh:mm:ss',
+    interval: 60,
+    minTime: '00:01:00',
+    maxTime: '23:59:00',
+    //defaultTime: '12',
+    startTime: '1',
+    dynamic: false,
+    dropdown: true,
+    scrollbar: true
+  });
+  </script>
+
+<br /><br /><br /><input type="submit" onclick="getRecievedTimes()" value="Submit" id="submit" />
+</form>
+</br>
+{% endif %}
+{% endif %}
+
+    <!--
+    Show the calendar list (if we have it).  This will need to be turned into
+    a form from which calendars can be picked. Up to three entries are
+    shown in each row (but the order is across then down; I would
+    prefer down then across).
+    -->
+{% if g.cal_list is not defined  %}
+  {% if g.calendars is defined  %}
+  <h2>You've selected a time between {%if session.begin_time is defined %}{{session.begin_time | fmttime}}{% endif %} and {%if session.end_time is defined %}{{session.end_time | fmttime}}{% endif %} </h2><br>
+  <p>Choose which calendars you would like to include below</p>
+    <div class="row">
+    {% for cal in g.calendars if cal.selected %}
+            <div class="col-md-4"><input type="checkbox" onchange='remove(this);' value={{cal.id}} name="primary_choice" id="checkbox">
+  	   {{ cal.summary }}
+            </div>
+           {% if loop.index is divisibleby 3 %}
+            </div> <div class="row">
+           {% endif %}
+    {% endfor %}
+    </div>
+    <button onclick="loadPage()" id="remove">Display Free Times</button>
+  {% endif %}
+{% endif %}
+
+
+</br>
+{% if g.cal_list is defined  %}
+<h2>Choose a timeframe listed below and you're finished!</h2><br>
+  <div class="row">
+    <ul>
+  {% for event in g.cal_list %}
+      <h4><input type="radio" onchange='choose_free(this);' value="{{event}}" name="primary_radio_choice" id="radio">
+	   {{event.day | fmtdate}}
+   </h4>
+      <li>{{event.start}} - {{event.end}}</li></br>
+  {% endfor %}
+</ul>
+</div> <div class="row">
+  <button onclick="recipientDecided()" id="create_entry">Choose Meeting</button>
+  </div>
+
+{% endif %}
+
+<script>
+function getTimes(){
+  var begin_value = $('input[name="begin_time"]').val();
+  var end_value = $('input[name="end_time"]').val();
+  $.getJSON('/_end_time_set', { end_value: end_value});
+  $.getJSON('/_begin_time_set', { begin_value: begin_value});
+}
+function remove(cb){
+  if(cb.checked == true){
+  //console.log(cb.value);
+    add_primary(cb.value);
+ }else{
+   //console.log(cb.value);
+   remove_primary(cb.value);
+ }
+}
+
+function choose_free(rb){
+  if(rb.checked == true){
+  //console.log(cb.value);
+    add_free(rb.value);
+ }else{
+   //console.log(cb.value);
+   remove_free(rb.value);
+ }
+}
+
+function add_primary(id) {
+   $.getJSON('/_add_primary', { id: id});
+ }
+ function remove_primary(id) {
+    $.getJSON('/_remove_primary', { id: id});
+  }
+ function add_free(id) {
+    $.getJSON('/_add_free', { free: id});
+  }
+function remove_free(id) {
+   $.getJSON('/_remove_free', { free: id});
+ }
+ function loadPage() {
+  location.href = "list_chosen";
+}
+//TODO implement this method
+function loadRecievedPage() {
+ location.href = "recieved_list_chosen";
+}
+//TODO implement this method
+function recipientDecided() {
+ location.href = "recieved_decided";
+}
+</script>
+  </div>  <!-- container (for bootstrap) -->
+  </body> </html>
