@@ -1,6 +1,0 @@
-# 
-# Target-specific paths for Makefile
-#
-
-PYVENV = /usr/bin/pyvenv 
-
