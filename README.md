@@ -1,9 +1,17 @@
-# proj8-freetimes, Wyatt Reed for CIS 322, University of Oregon
-Select multiple Google calendars and get the complement free times.
+# proj9-MeetMe, Wyatt Reed for CIS 322, University of Oregon
+Select multiple Google calendars and get the complement free times, then send them to a friend to hash out a meeting.
 
 
 ## How to Run the Code
 You may start configuring the code by doing the following.
+
+Make sure that you've started your mongodb database and created a admin user using
+
+```
+	mongo --port xxxx
+	use admin
+```
+Then adding your user credentials. Afterward you are ready to connect ot the application after creating your admin_credentials file.
 
 ```
 	bash ./configure
@@ -19,4 +27,12 @@ If you have issues with the service you can stop the service by typing the follo
 	ps -e | grep gunicorn #Find the PID for gunicorn
 	kill -9 pid #where pid is the process id returned by the last command
 	make service
+```
+
+If you are getting issues starting the mongodb server, make sure your current user has access to /data/db/
+
+If you do not, attempt the following as root. 
+
+```
+sudo chown -R youruser /data/db/
 ```
